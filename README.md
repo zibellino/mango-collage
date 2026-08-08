@@ -1,6 +1,6 @@
-# Mango app template
+# Mango Collage
 
-Android app template, builds with Gradle on GitHub.
+Mango Collage — Android app, builds with Gradle on GitHub.
 
 ## Using this template for a new app
 
@@ -8,7 +8,7 @@ Edit `app.properties` at the repo root.
 
 ## No source, black screen on launch — no custom Activity needed
 
-There is no `MainActivity.kt` in this template, and none is required for it to launch cleanly. The manifest's launcher `<activity>` points directly at `androidx.activity.ComponentActivity` — the base class every Compose Activity ultimately extends, already a dependency here, concrete and instantiable as-is. Its default `onCreate()` does nothing beyond standard lifecycle setup, so you get a blank screen (black, via `Theme.App`'s `windowBackground`) with no crash and no placeholder file to write, delete, or relocate.
+There is no `MainActivity.kt` yet, and none is required for it to launch cleanly. The manifest's launcher `<activity>` points directly at `androidx.activity.ComponentActivity` — the base class every Compose Activity ultimately extends, already a dependency here, concrete and instantiable as-is. Its default `onCreate()` does nothing beyond standard lifecycle setup, so you get a blank screen (black, via `Theme.App`'s `windowBackground`) with no crash and no placeholder file to write, delete, or relocate.
 
 When you're ready for real UI:
 1. Create your own Activity under `app/src/main/kotlin/<your app.package path>/` (or `java/`, either works)
