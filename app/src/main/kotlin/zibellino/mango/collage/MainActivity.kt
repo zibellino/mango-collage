@@ -12,6 +12,7 @@ import androidx.compose.material3.Surface
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
@@ -50,7 +51,7 @@ private fun GridCanvas() {
     // Offset is in screen pixels (the pan translation applied before scaling);
     // scale is the current zoom factor.
     var scale by remember { mutableFloatStateOf(1f) }
-    var offset by remember { mutableStateOfOffset(Offset.Zero) }
+    var offset by remember { mutableStateOf(Offset.Zero) }
 
     val density = LocalDensity.current
     val gridSpacingPx = with(density) { (GRID_SPACING_MM / MM_PER_INCH) * density.density * 160f }
@@ -114,9 +115,3 @@ private fun GridCanvas() {
     }
 }
 
-// Small helper so Offset (which isn't natively supported by mutableStateOf's
-// type inference in a `by` delegate the way primitives are) still gets a
-// clean `by`-delegated property.
-@Composable
-private fun mutableStateOfOffset(initial: Offset) =
-    androidx.compose.runtime.mutableStateOf(initial)
