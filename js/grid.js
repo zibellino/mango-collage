@@ -27,6 +27,7 @@ export class GridCamera {
     this._pointers = new Map();
     this._lastCentroid = null;
     this._lastDist = null;
+    this._lastSingle = null;
 
     this._bindEvents();
     this._render();
@@ -42,19 +43,6 @@ export class GridCamera {
     this._render();
   }
 
-  // Returns the world-space point currently at the center of the visible
-  // viewport. World space uses the same unit as everything else here: CSS
-  // px at scale 1 (i.e. consistent with PX_PER_MM used for the grid).
-  getViewportCenterWorld() {
-    const rect = this.svg.getBoundingClientRect();
-    const screenCenterX = rect.width / 2;
-    const screenCenterY = rect.height / 2;
-    return {
-      x: (screenCenterX - this.camera.x) / this.camera.scale,
-      y: (screenCenterY - this.camera.y) / this.camera.scale,
-    };
-  }
-
   _bindEvents() {
     const svg = this.svg;
     svg.addEventListener('pointerdown', (e) => {
@@ -62,6 +50,10 @@ export class GridCamera {
       this._pointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
       this._lastCentroid = null;
       this._lastDist = null;
+      // Always re-anchor on a fresh pointer touching down, so a new
+      // tap/drag never pans against a stale position left over from a
+      // previous gesture.
+      this._lastSingle = { x: e.clientX, y: e.clientY };
     });
 
     svg.addEventListener('pointermove', (e) => {
@@ -85,6 +77,10 @@ export class GridCamera {
         // jump on the next move.
         const [p] = this._pointers.values();
         this._lastSingle = { x: p.x, y: p.y };
+      } else {
+        // No pointers left down: clear the anchor so the next tap/drag
+        // starts fresh instead of panning against a stale position.
+        this._lastSingle = null;
       }
     };
     svg.addEventListener('pointerup', release);
