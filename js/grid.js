@@ -43,6 +43,19 @@ export class GridCamera {
     this._render();
   }
 
+  // Returns the world-space point currently at the center of the visible
+  // viewport. World space uses the same unit as everything else here: CSS
+  // px at scale 1 (i.e. consistent with PX_PER_MM used for the grid).
+  getViewportCenterWorld() {
+    const rect = this.svg.getBoundingClientRect();
+    const screenCenterX = rect.width / 2;
+    const screenCenterY = rect.height / 2;
+    return {
+      x: (screenCenterX - this.camera.x) / this.camera.scale,
+      y: (screenCenterY - this.camera.y) / this.camera.scale,
+    };
+  }
+
   _bindEvents() {
     const svg = this.svg;
     svg.addEventListener('pointerdown', (e) => {
