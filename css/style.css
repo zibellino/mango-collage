@@ -1,0 +1,90 @@
+:root {
+  color-scheme: light;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html, body {
+  margin: 0;
+  padding: 0;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+}
+
+#app {
+  position: relative;
+  width: 100%;
+  height: 100%;
+}
+
+#canvas {
+  width: 100%;
+  height: 100%;
+  display: block;
+  background: #ffffff;
+  touch-action: none;
+}
+
+.grid-line {
+  stroke: #bbbbbb;
+}
+
+#menu-container {
+  position: absolute;
+  top: 8px;
+  left: 8px;
+}
+
+#menu-button {
+  width: 40px;
+  height: 40px;
+  border-radius: 8px;
+  border: none;
+  background: #ffffff;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.25);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  padding: 0;
+}
+
+#menu-button:hover {
+  background: #f2f2f2;
+}
+
+#menu-dropdown {
+  position: absolute;
+  top: 46px;
+  left: 0;
+  min-width: 140px;
+  background: #ffffff;
+  border-radius: 8px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.25);
+  overflow: hidden;
+  padding: 4px;
+}
+
+#menu-dropdown[hidden] {
+  display: none;
+}
+
+#menu-dropdown button {
+  display: block;
+  width: 100%;
+  text-align: left;
+  padding: 10px 12px;
+  border: none;
+  background: none;
+  font-size: 15px;
+  border-radius: 6px;
+  cursor: pointer;
+}
+
+#menu-dropdown button:hover {
+  background: #f2f2f2;
+}

@@ -1,0 +1,19 @@
+{
+  "name": "Mango Collage",
+  "short_name": "MangoCollage",
+  "description": "Arrange SVG shapes on a zoomable, pannable grid.",
+  "start_url": ".",
+  "scope": ".",
+  "display": "standalone",
+  "background_color": "#ffffff",
+  "theme_color": "#ffffff",
+  "orientation": "any",
+  "icons": [
+    {
+      "src": "icons/icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    }
+  ]
+}

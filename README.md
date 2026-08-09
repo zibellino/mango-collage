@@ -1,33 +1,40 @@
 # Mango Collage
 
-Mango Collage — Android app, builds with Gradle on GitHub.
+A small installable web app (PWA) for arranging SVG shapes on a zoomable,
+pannable grid.
 
-## Using this template for a new app
+## Running locally
 
-Edit `app.properties` at the repo root.
-
-## No source, black screen on launch — no custom Activity needed
-
-There is no `MainActivity.kt` yet, and none is required for it to launch cleanly. The manifest's launcher `<activity>` points directly at `androidx.activity.ComponentActivity` — the base class every Compose Activity ultimately extends, already a dependency here, concrete and instantiable as-is. Its default `onCreate()` does nothing beyond standard lifecycle setup, so you get a blank screen (black, via `Theme.App`'s `windowBackground`) with no crash and no placeholder file to write, delete, or relocate.
-
-When you're ready for real UI:
-1. Create your own Activity under `app/src/main/kotlin/<your app.package path>/` (or `java/`, either works)
-2. In `AndroidManifest.xml`, swap `android:name="androidx.activity.ComponentActivity"` for your own, package-relative form, e.g. `android:name=".MainActivity"`
-
-## Versioning
-
-`versionCode`/`versionName` are computed in CI, not hardcoded:
-- **Release** (GitHub release created): `versionName` = the release tag name, `versionCode` = the CI run number
-- **Push** (branch, e.g. `master`): `versionName` = the branch name (slashes replaced with `-`)
-- **Pull request**: `versionName` = the PR's source branch name
-- Every build artifact also gets a short commit SHA appended to its filename for disambiguation
-
-Locally (`gradle assembleDebug` with no CI flags), it falls back to `app.version` from `app.properties` and `versionCode = 1` — fine since local builds are never uploaded anywhere.
-
-## Building
+No build step, no dependencies. Serve the folder over HTTP (needed for the
+service worker and manifest to work) and open it, for example:
 
 ```
-gradle assembleDebug
+python3 -m http.server 8000
 ```
 
-Requires JDK 17 and Android SDK. CI via GitHub Actions on every push, PR, and release; the Gradle wrapper is generated fresh in CI rather than committed.
+Then visit `http://localhost:8000`.
+
+Opening `index.html` directly via `file://` will mostly work for the canvas
+and grid, but the service worker (offline caching) won't register on a
+`file://` origin.
+
+## Deployment
+
+Static site, deployed via GitHub Pages directly from this repo (no build
+step). Enable Pages in the repo settings, pointing at the branch/folder this
+file lives in.
+
+## Structure
+
+- `index.html` — app shell
+- `css/style.css` — styling
+- `js/app.js` — entry point, wires everything together
+- `js/grid.js` — SVG canvas camera: pan, pinch-zoom, and the background grid
+- `js/menu.js` — hamburger menu (currently: one "Add" item, opens a file
+  picker for SVG files)
+- `manifest.json`, `sw.js`, `icons/` — PWA install/offline support
+
+## Status
+
+Canvas pan/zoom and the grid are in place. The "Add" menu item opens a file
+picker for SVG files but doesn't place them on the canvas yet — that's next.
