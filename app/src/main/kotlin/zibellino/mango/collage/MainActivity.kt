@@ -6,15 +6,23 @@ import androidx.activity.compose.setContent
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.gestures.detectTransformGestures
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
+import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
@@ -39,7 +47,10 @@ class MainActivity : ComponentActivity() {
         setContent {
             MaterialTheme {
                 Surface(modifier = Modifier.fillMaxSize()) {
-                    GridCanvas()
+                    Box(modifier = Modifier.fillMaxSize()) {
+                        GridCanvas()
+                        MenuButton(modifier = Modifier.align(Alignment.TopStart))
+                    }
                 }
             }
         }
@@ -111,6 +122,50 @@ private fun GridCanvas() {
             )
             y += spacing
             jIndex++
+        }
+    }
+}
+
+@Composable
+private fun MenuButton(modifier: Modifier = Modifier) {
+    var expanded by remember { mutableStateOf(false) }
+
+    Box(modifier = modifier.padding(8.dp)) {
+        IconButton(onClick = { expanded = true }) {
+            HamburgerIcon()
+        }
+        DropdownMenu(
+            expanded = expanded,
+            onDismissRequest = { expanded = false }
+        ) {
+            DropdownMenuItem(
+                text = { Text("Add") },
+                onClick = {
+                    expanded = false
+                    // TODO: wire up the actual add action
+                }
+            )
+        }
+    }
+}
+
+// Drawn manually rather than pulling in the material-icons-core/-extended
+// artifacts just for a single glyph.
+@Composable
+private fun HamburgerIcon() {
+    Canvas(modifier = Modifier.size(24.dp)) {
+        val barColor = Color(0xFF444444)
+        val strokeWidth = size.minDimension * 0.09f
+        val inset = size.width * 0.15f
+        val ys = listOf(size.height * 0.25f, size.height * 0.5f, size.height * 0.75f)
+        ys.forEach { y ->
+            drawLine(
+                color = barColor,
+                start = Offset(inset, y),
+                end = Offset(size.width - inset, y),
+                strokeWidth = strokeWidth,
+                cap = StrokeCap.Round
+            )
         }
     }
 }
