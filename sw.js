@@ -18,7 +18,15 @@ const APP_SHELL = [
 
 self.addEventListener('install', (event) => {
   event.waitUntil(
-    caches.open(CACHE_NAME).then((cache) => cache.addAll(APP_SHELL))
+    caches.open(CACHE_NAME).then((cache) =>
+      Promise.all(
+        APP_SHELL.map((path) =>
+          fetch(path, { cache: 'no-store' }).then((response) => {
+            if (response.ok) return cache.put(path, response);
+          })
+        )
+      )
+    )
   );
   self.skipWaiting();
 });
@@ -49,10 +57,14 @@ self.addEventListener('fetch', (event) => {
   if (url.origin !== self.location.origin) return;
 
   if (isAppShellRequest(url)) {
-    // Network-first: always try to get the latest version. Only fall back
-    // to the cache if the network is unavailable (offline).
+    // Network-first: always try to get the latest version. cache: 'no-store'
+    // bypasses the browser's regular HTTP cache too — without it, fetch()
+    // can still return a stale response straight from HTTP caching (e.g.
+    // GitHub Pages' cache-control headers) even though the service worker
+    // itself is "going to the network". Only fall back to our own cache if
+    // the network is unavailable (offline).
     event.respondWith(
-      fetch(event.request)
+      fetch(event.request, { cache: 'no-store' })
         .then((response) => {
           if (response.ok) {
             const copy = response.clone();
