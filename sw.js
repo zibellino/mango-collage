@@ -1,4 +1,9 @@
-const CACHE_NAME = 'mango-collage-v1';
+const CACHE_NAME = 'mango-collage-shell';
+
+// The app shell: files that define the app itself. These are always
+// fetched from the network first, so a new deploy is picked up on next
+// load with no manual cache-version bumping. The cached copy is only used
+// as an offline fallback.
 const APP_SHELL = [
   './',
   './index.html',
@@ -7,7 +12,7 @@ const APP_SHELL = [
   './js/app.js',
   './js/grid.js',
   './js/menu.js',
-  './icons/icon.svg',
+  './icons/icon.png',
 ];
 
 self.addEventListener('install', (event) => {
@@ -28,15 +33,44 @@ self.addEventListener('activate', (event) => {
   self.clients.claim();
 });
 
+function isAppShellRequest(url) {
+  const path = url.pathname;
+  return APP_SHELL.some((shellPath) => {
+    const normalized = shellPath.replace('./', '/');
+    return path === normalized || path.endsWith(normalized);
+  });
+}
+
 self.addEventListener('fetch', (event) => {
   if (event.request.method !== 'GET') return;
 
+  const url = new URL(event.request.url);
+  if (url.origin !== self.location.origin) return;
+
+  if (isAppShellRequest(url)) {
+    // Network-first: always try to get the latest version. Only fall back
+    // to the cache if the network is unavailable (offline).
+    event.respondWith(
+      fetch(event.request)
+        .then((response) => {
+          if (response.ok) {
+            const copy = response.clone();
+            caches.open(CACHE_NAME).then((cache) => cache.put(event.request, copy));
+          }
+          return response;
+        })
+        .catch(() => caches.match(event.request))
+    );
+    return;
+  }
+
+  // Everything else (not currently part of the app shell): cache-first,
+  // since it's less likely to change on every deploy.
   event.respondWith(
     caches.match(event.request).then((cached) => {
       if (cached) return cached;
       return fetch(event.request).then((response) => {
-        // Only cache same-origin, successful responses.
-        if (response.ok && new URL(event.request.url).origin === self.location.origin) {
+        if (response.ok) {
           const copy = response.clone();
           caches.open(CACHE_NAME).then((cache) => cache.put(event.request, copy));
         }
