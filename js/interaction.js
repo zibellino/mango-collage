@@ -169,4 +169,11 @@ export function initInteraction(svgEl, camera, doc) {
   }
   svgEl.addEventListener('pointerup', release);
   svgEl.addEventListener('pointercancel', release);
+
+  // Exposed so app.js can clear the selection after an external change to
+  // the document (e.g. "New" wiping everything) — selectedId would
+  // otherwise keep pointing at a shape that no longer exists.
+  return {
+    clearSelection: () => setSelected(null),
+  };
 }

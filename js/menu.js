@@ -1,6 +1,7 @@
-export function initMenu({ onAdd }) {
+export function initMenu({ onAdd, onNew }) {
   const button = document.getElementById('menu-button');
   const dropdown = document.getElementById('menu-dropdown');
+  const newItem = document.getElementById('menu-new');
   const addItem = document.getElementById('menu-add');
   const fileInput = document.getElementById('file-input');
 
@@ -24,6 +25,11 @@ export function initMenu({ onAdd }) {
     if (!dropdown.hidden && !dropdown.contains(e.target) && e.target !== button) {
       closeMenu();
     }
+  });
+
+  newItem.addEventListener('click', () => {
+    closeMenu();
+    if (onNew) onNew();
   });
 
   addItem.addEventListener('click', () => {

@@ -153,4 +153,13 @@ export class ShapeDocument {
       id, name, x, y, width, height, sourceSvgText,
     }));
   }
+
+  // Removes every shape from both the DOM and the model. Used by "New".
+  clear() {
+    for (const shape of this.shapes) {
+      shape.element.remove();
+    }
+    this.shapes = [];
+    this.onChange();
+  }
 }

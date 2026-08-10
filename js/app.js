@@ -7,7 +7,7 @@ import { Autosave } from './persistence.js';
 const svg = document.getElementById('canvas');
 const camera = new GridCamera(svg);
 const doc = new ShapeDocument(svg.querySelector('#world'));
-initInteraction(svg, camera, doc);
+const interaction = initInteraction(svg, camera, doc);
 
 const autosave = new Autosave(doc, camera);
 doc.onChange = () => autosave.scheduleSave();
@@ -26,6 +26,14 @@ window.addEventListener('pagehide', () => {
 });
 
 initMenu({
+  onNew: () => {
+    if (doc.shapes.length === 0) return;
+    if (!confirm('Start a new collage? This clears everything and can\u2019t be undone.')) return;
+    doc.clear();
+    camera.setState({ x: 0, y: 0, scale: 1 });
+    interaction.clearSelection();
+    autosave.saveNow().catch((err) => console.warn('Autosave failed', err));
+  },
   onAdd: async (file) => {
     try {
       await doc.addFromFile(file, camera);
