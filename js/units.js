@@ -4,4 +4,4 @@
 // but it's the same convention every browser uses for CSS length units, so
 // it stays consistent across devices and with any CSS "mm" values. World
 // space (shape/camera coordinates) uses this same px unit throughout.
-export const PX_PER_MM = 96 / 25.4;
+export const PX_PER_MM = 1;
