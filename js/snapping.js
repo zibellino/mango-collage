@@ -1,5 +1,3 @@
-import { PX_PER_MM } from './units.js';
-
 // This is a separate grid from the visual one drawn in grid.js — same idea
 // (mm-based spacing) but independently configurable, per the plan to make
 // both toggleable and independently sized later. For now it's fixed on and
@@ -17,10 +15,9 @@ export function setSnapSpacingMm(mm) {
 
 export function snapPoint(x, y) {
   if (!enabled) return { x, y };
-  const spacingPx = spacingMm * PX_PER_MM;
-  if (spacingPx <= 0) return { x, y };
+  if (spacingMm <= 0) return { x, y };
   return {
-    x: Math.round(x / spacingPx) * spacingPx,
-    y: Math.round(y / spacingPx) * spacingPx,
+    x: Math.round(x / spacingMm) * spacingMm,
+    y: Math.round(y / spacingMm) * spacingMm,
   };
 }

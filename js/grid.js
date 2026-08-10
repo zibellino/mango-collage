@@ -1,5 +1,3 @@
-import { PX_PER_MM } from './units.js';
-
 const GRID_SPACING_MM = 5;
 
 const MIN_SCALE = 0.2;
@@ -84,7 +82,7 @@ export class GridCamera {
     const { x, y, scale } = this.camera;
     this.world.setAttribute('transform', `translate(${x} ${y}) scale(${scale})`);
 
-    const spacingPx = this.gridSpacingMm * PX_PER_MM * scale;
+    const spacingPx = this.gridSpacingMm * scale;
 
     if (!this.gridEnabled || spacingPx <= 0) {
       this.gridPattern.setAttribute('width', '0');
