@@ -33,6 +33,16 @@ html, body {
   stroke: #bbbbbb;
 }
 
+.hit-rect {
+  stroke: transparent;
+  stroke-width: 2px;
+  stroke-dasharray: 6 4;
+}
+
+.shape-wrapper.selected .hit-rect {
+  stroke: #2f7de1;
+}
+
 #menu-container {
   position: absolute;
   top: 8px;

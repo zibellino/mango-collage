@@ -1,10 +1,12 @@
 import { GridCamera } from './grid.js';
 import { initMenu } from './menu.js';
 import { ShapeDocument } from './shapes.js';
+import { initInteraction } from './interaction.js';
 
 const svg = document.getElementById('canvas');
 const camera = new GridCamera(svg);
 const doc = new ShapeDocument(svg.querySelector('#world'));
+initInteraction(svg, camera, doc);
 
 initMenu({
   onAdd: async (file) => {

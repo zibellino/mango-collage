@@ -55,14 +55,39 @@ export class ShapeDocument {
     const x = center.x - width / 2;
     const y = center.y - height / 2;
 
+    const viewBox = svgRoot.getAttribute('viewBox') || `0 0 ${width} ${height}`;
+    const viewBoxParts = viewBox.trim().split(/[\s,]+/).map(Number);
+
+    const id = nextId++;
+
     const wrapper = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
     wrapper.setAttribute('x', String(x));
     wrapper.setAttribute('y', String(y));
     wrapper.setAttribute('width', String(width));
     wrapper.setAttribute('height', String(height));
-    const viewBox = svgRoot.getAttribute('viewBox') || `0 0 ${width} ${height}`;
     wrapper.setAttribute('viewBox', viewBox);
     wrapper.setAttribute('overflow', 'visible');
+    wrapper.setAttribute('data-shape-id', String(id));
+    wrapper.classList.add('shape-wrapper');
+
+    // An invisible rect covering the shape's full bounding box (in its own
+    // viewBox coordinate space), so the whole shape is tappable/draggable —
+    // not just wherever it happens to have visible/painted pixels.
+    // pointer-events: all makes it hit-testable despite fill: none. It also
+    // doubles as the selection outline (styled via the .hit-rect class).
+    const hitRect = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
+    hitRect.setAttribute('x', String(viewBoxParts[0] ?? 0));
+    hitRect.setAttribute('y', String(viewBoxParts[1] ?? 0));
+    hitRect.setAttribute('width', String(viewBoxParts[2] ?? width));
+    hitRect.setAttribute('height', String(viewBoxParts[3] ?? height));
+    hitRect.setAttribute('fill', 'none');
+    hitRect.setAttribute('pointer-events', 'all');
+    // Constant on-screen stroke width regardless of camera zoom, once
+    // selected — otherwise the dashed outline would get thinner/thicker as
+    // you zoom, same idea as the grid staying legible at any zoom level.
+    hitRect.setAttribute('vector-effect', 'non-scaling-stroke');
+    hitRect.classList.add('hit-rect');
+    wrapper.appendChild(hitRect);
 
     // Move the original SVG's children into the wrapper, preserving the
     // original markup (defs, styles, nested groups, etc.) rather than
@@ -73,17 +98,23 @@ export class ShapeDocument {
 
     this.world.appendChild(wrapper);
 
-    const shape = {
-      id: nextId++,
-      name: file.name,
-      x,
-      y,
-      width,
-      height,
-      sourceSvgText: text,
-      element: wrapper,
-    };
+    const shape = { id, name: file.name, x, y, width, height, sourceSvgText: text, element: wrapper };
     this.shapes.push(shape);
     return shape;
+  }
+
+  getById(id) {
+    return this.shapes.find((s) => s.id === id);
+  }
+
+  // Updates both the model and the DOM element's position. Used while
+  // dragging.
+  setPosition(id, x, y) {
+    const shape = this.getById(id);
+    if (!shape) return;
+    shape.x = x;
+    shape.y = y;
+    shape.element.setAttribute('x', String(x));
+    shape.element.setAttribute('y', String(y));
   }
 }

@@ -13,6 +13,7 @@ const APP_SHELL = [
   './js/grid.js',
   './js/menu.js',
   './js/shapes.js',
+  './js/interaction.js',
   './icons/icon.png',
 ];
 

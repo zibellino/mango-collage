@@ -9,6 +9,10 @@ const GRID_SPACING_MM = 5;
 const MIN_SCALE = 0.2;
 const MAX_SCALE = 40;
 
+// GridCamera owns the camera state (pan/zoom) and the grid rendering. It
+// does NOT bind any pointer events itself — gesture handling lives in
+// interaction.js, which decides whether a given gesture should move the
+// camera or a shape, and calls panBy()/zoomAtClientPoint() accordingly.
 export class GridCamera {
   constructor(svgEl) {
     this.svg = svgEl;
@@ -24,12 +28,6 @@ export class GridCamera {
     this.gridEnabled = true;
     this.gridSpacingMm = GRID_SPACING_MM;
 
-    this._pointers = new Map();
-    this._lastCentroid = null;
-    this._lastDist = null;
-    this._lastSingle = null;
-
-    this._bindEvents();
     this._render();
   }
 
@@ -56,85 +54,24 @@ export class GridCamera {
     };
   }
 
-  _bindEvents() {
-    const svg = this.svg;
-    svg.addEventListener('pointerdown', (e) => {
-      svg.setPointerCapture(e.pointerId);
-      this._pointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
-      this._lastCentroid = null;
-      this._lastDist = null;
-      // Always re-anchor on a fresh pointer touching down, so a new
-      // tap/drag never pans against a stale position left over from a
-      // previous gesture.
-      this._lastSingle = { x: e.clientX, y: e.clientY };
-    });
-
-    svg.addEventListener('pointermove', (e) => {
-      if (!this._pointers.has(e.pointerId)) return;
-      this._pointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
-
-      const pts = Array.from(this._pointers.values());
-      if (pts.length === 1) {
-        this._panOnly(pts[0]);
-      } else if (pts.length >= 2) {
-        this._panAndZoom(pts[0], pts[1]);
-      }
-    });
-
-    const release = (e) => {
-      this._pointers.delete(e.pointerId);
-      this._lastCentroid = null;
-      this._lastDist = null;
-      if (this._pointers.size === 1) {
-        // Reset the anchor for the remaining single pointer so it doesn't
-        // jump on the next move.
-        const [p] = this._pointers.values();
-        this._lastSingle = { x: p.x, y: p.y };
-      } else {
-        // No pointers left down: clear the anchor so the next tap/drag
-        // starts fresh instead of panning against a stale position.
-        this._lastSingle = null;
-      }
-    };
-    svg.addEventListener('pointerup', release);
-    svg.addEventListener('pointercancel', release);
-  }
-
-  _panOnly(p) {
-    if (!this._lastSingle) {
-      this._lastSingle = { x: p.x, y: p.y };
-      return;
-    }
-    const dx = p.x - this._lastSingle.x;
-    const dy = p.y - this._lastSingle.y;
-    this.camera.x += dx;
-    this.camera.y += dy;
-    this._lastSingle = { x: p.x, y: p.y };
+  // Pans by a screen-pixel delta (not world-space — the caller is
+  // typically forwarding raw pointer movement).
+  panBy(dxScreen, dyScreen) {
+    this.camera.x += dxScreen;
+    this.camera.y += dyScreen;
     this._render();
   }
 
-  _panAndZoom(p1, p2) {
-    this._lastSingle = null;
-    const centroid = { x: (p1.x + p2.x) / 2, y: (p1.y + p2.y) / 2 };
-    const dist = Math.hypot(p2.x - p1.x, p2.y - p1.y);
-
-    if (this._lastCentroid && this._lastDist) {
-      const zoom = dist / this._lastDist;
-      const newScale = Math.min(MAX_SCALE, Math.max(MIN_SCALE, this.camera.scale * zoom));
-      const panX = centroid.x - this._lastCentroid.x;
-      const panY = centroid.y - this._lastCentroid.y;
-
-      // Keep the point under the centroid fixed on screen while zooming,
-      // then apply the pan on top (same approach as a standard two-finger
-      // transform gesture).
-      this.camera.x = (this.camera.x - centroid.x) * (newScale / this.camera.scale) + centroid.x + panX;
-      this.camera.y = (this.camera.y - centroid.y) * (newScale / this.camera.scale) + centroid.y + panY;
-      this.camera.scale = newScale;
-      this._render();
-    }
-
-    this._lastCentroid = centroid;
-    this._lastDist = dist;
+  // Zooms by `factor` (e.g. 1.02 for a slight zoom-in), keeping the given
+  // client-space point fixed on screen — the standard anchored-zoom
+  // approach for pinch gestures.
+  zoomAtClientPoint(centroidClient, factor) {
+    const newScale = Math.min(MAX_SCALE, Math.max(MIN_SCALE, this.camera.scale * factor));
+    const appliedFactor = newScale / this.camera.scale;
+    this.camera.x = (this.camera.x - centroidClient.x) * appliedFactor + centroidClient.x;
+    this.camera.y = (this.camera.y - centroidClient.y) * appliedFactor + centroidClient.y;
+    this.camera.scale = newScale;
+    this._render();
   }
 
   _render() {
