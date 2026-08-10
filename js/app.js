@@ -2,11 +2,28 @@ import { GridCamera } from './grid.js';
 import { initMenu } from './menu.js';
 import { ShapeDocument } from './shapes.js';
 import { initInteraction } from './interaction.js';
+import { Autosave } from './persistence.js';
 
 const svg = document.getElementById('canvas');
 const camera = new GridCamera(svg);
 const doc = new ShapeDocument(svg.querySelector('#world'));
 initInteraction(svg, camera, doc);
+
+const autosave = new Autosave(doc, camera);
+doc.onChange = () => autosave.scheduleSave();
+autosave.load().catch((err) => console.warn('Failed to restore saved session', err));
+
+// A pending debounced save can be lost if the tab/app is killed in the
+// background before the timer fires (common on mobile). Force an
+// immediate write whenever the page is about to be hidden.
+document.addEventListener('visibilitychange', () => {
+  if (document.visibilityState === 'hidden') {
+    autosave.saveNow().catch((err) => console.warn('Autosave failed', err));
+  }
+});
+window.addEventListener('pagehide', () => {
+  autosave.saveNow().catch(() => {});
+});
 
 initMenu({
   onAdd: async (file) => {

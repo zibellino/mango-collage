@@ -70,6 +70,16 @@ export class GridCamera {
     this._render();
   }
 
+  // Directly sets the camera state (used to restore a saved session) and
+  // re-renders. Unlike panBy/zoomAtClientPoint, this isn't a relative
+  // gesture update.
+  setState({ x, y, scale }) {
+    this.camera.x = x;
+    this.camera.y = y;
+    this.camera.scale = scale;
+    this._render();
+  }
+
   _render() {
     const { x, y, scale } = this.camera;
     this.world.setAttribute('transform', `translate(${x} ${y}) scale(${scale})`);

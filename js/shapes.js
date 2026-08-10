@@ -39,6 +39,10 @@ export class ShapeDocument {
   constructor(worldEl) {
     this.world = worldEl;
     this.shapes = [];
+    // Called after any mutation (add or move). Assigned by app.js to
+    // trigger autosave; a no-op by default so ShapeDocument doesn't need
+    // to know persistence exists.
+    this.onChange = () => {};
   }
 
   async addFromFile(file, camera) {
@@ -55,10 +59,33 @@ export class ShapeDocument {
     const x = center.x - width / 2;
     const y = center.y - height / 2;
 
+    return this._addShape({ id: nextId++, name: file.name, sourceSvgText: text, x, y });
+  }
+
+  // Recreates a shape from previously-saved data (autosave restore). Unlike
+  // addFromFile, the id/position are given rather than computed, since
+  // we're putting things back exactly where they were.
+  restoreShape(saved) {
+    const shape = this._addShape({
+      id: saved.id,
+      name: saved.name,
+      sourceSvgText: saved.sourceSvgText,
+      x: saved.x,
+      y: saved.y,
+    });
+    // Keep the id counter ahead of anything restored, so newly-added
+    // shapes after a restore never collide with a restored id.
+    nextId = Math.max(nextId, saved.id + 1);
+    return shape;
+  }
+
+  _addShape({ id, name, sourceSvgText, x, y }) {
+    const parsed = new DOMParser().parseFromString(sourceSvgText, 'image/svg+xml');
+    const svgRoot = parsed.documentElement;
+    const { width, height } = getIntrinsicSize(svgRoot);
+
     const viewBox = svgRoot.getAttribute('viewBox') || `0 0 ${width} ${height}`;
     const viewBoxParts = viewBox.trim().split(/[\s,]+/).map(Number);
-
-    const id = nextId++;
 
     const wrapper = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
     wrapper.setAttribute('x', String(x));
@@ -98,8 +125,9 @@ export class ShapeDocument {
 
     this.world.appendChild(wrapper);
 
-    const shape = { id, name: file.name, x, y, width, height, sourceSvgText: text, element: wrapper };
+    const shape = { id, name, x, y, width, height, sourceSvgText, element: wrapper };
     this.shapes.push(shape);
+    this.onChange();
     return shape;
   }
 
@@ -116,5 +144,13 @@ export class ShapeDocument {
     shape.y = y;
     shape.element.setAttribute('x', String(x));
     shape.element.setAttribute('y', String(y));
+    this.onChange();
+  }
+
+  // Plain-data snapshot suitable for persistence/export (no DOM elements).
+  serialize() {
+    return this.shapes.map(({ id, name, x, y, width, height, sourceSvgText }) => ({
+      id, name, x, y, width, height, sourceSvgText,
+    }));
   }
 }

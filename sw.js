@@ -16,6 +16,7 @@ const APP_SHELL = [
   './js/interaction.js',
   './js/snapping.js',
   './js/units.js',
+  './js/persistence.js',
   './icons/icon.png',
 ];
 
