@@ -1,9 +1,5 @@
-// Millimeters are converted to CSS reference pixels using the standard
-// browser convention: 96px = 1in, so 1mm = 96/25.4 px. This is an
-// approximation (browsers don't know the display's true physical density),
-// but it's the same convention every browser uses for CSS length units, so
-// it stays consistent across devices and with any CSS "mm" values.
-const PX_PER_MM = 96 / 25.4;
+import { PX_PER_MM } from './units.js';
+
 const GRID_SPACING_MM = 5;
 
 const MIN_SCALE = 0.2;

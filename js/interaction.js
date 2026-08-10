@@ -1,3 +1,5 @@
+import { snapPoint } from './snapping.js';
+
 // All pointer gestures on the canvas go through here, rather than being
 // split across separate listeners, because deciding "is this a pan, a tap,
 // or a shape-drag" needs to see the whole gesture as it develops (a plain
@@ -118,11 +120,12 @@ export function initInteraction(svgEl, camera, doc) {
 
     if (single.committed === 'drag') {
       const scale = camera.camera.scale;
-      doc.setPosition(
-        single.shapeId,
-        single.shapeStartX + totalDx / scale,
-        single.shapeStartY + totalDy / scale
-      );
+      const raw = {
+        x: single.shapeStartX + totalDx / scale,
+        y: single.shapeStartY + totalDy / scale,
+      };
+      const snapped = snapPoint(raw.x, raw.y);
+      doc.setPosition(single.shapeId, snapped.x, snapped.y);
     } else {
       camera.panBy(e.clientX - single.lastClientX, e.clientY - single.lastClientY);
     }

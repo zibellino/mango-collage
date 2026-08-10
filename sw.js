@@ -14,6 +14,8 @@ const APP_SHELL = [
   './js/menu.js',
   './js/shapes.js',
   './js/interaction.js',
+  './js/snapping.js',
+  './js/units.js',
   './icons/icon.png',
 ];
 
