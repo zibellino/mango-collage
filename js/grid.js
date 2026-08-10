@@ -15,8 +15,8 @@ export class GridCamera {
     this.gridLinePath = svgEl.querySelector('.grid-line');
 
     // camera.x/y: screen-pixel translation applied before scaling.
-    // camera.scale: current zoom factor (1 = 1mm in world space renders as
-    // PX_PER_MM screen pixels).
+    // camera.scale: current zoom factor (1 world unit = 1mm; at scale 1,
+    // 1mm of world space renders as 1 CSS px on screen).
     this.camera = { x: 0, y: 0, scale: 1 };
 
     this.gridEnabled = true;
@@ -36,8 +36,7 @@ export class GridCamera {
   }
 
   // Returns the world-space point currently at the center of the visible
-  // viewport. World space uses the same unit as everything else here: CSS
-  // px at scale 1 (i.e. consistent with PX_PER_MM used for the grid).
+  // viewport. World space is millimeters directly (1 world unit = 1mm).
   getViewportCenterWorld() {
     const rect = this.svg.getBoundingClientRect();
     const screenCenterX = rect.width / 2;

@@ -1,7 +1,8 @@
-// World units are CSS px at camera scale 1 (see grid.js). SVG shapes are
-// never scaled: their own width/height (or viewBox, as a fallback) defines
-// their size in that same unit, so a shape's on-screen size only changes
-// with the camera zoom, exactly like the grid.
+// World units are millimeters directly (1 world unit = 1mm), matching the
+// visual grid and snap grid — see grid.js/snapping.js. SVG shapes are never
+// scaled: their own width/height (or viewBox, as a fallback) defines their
+// size in that same unit, so a shape's on-screen size only changes with the
+// camera zoom, exactly like the grid.
 
 let nextId = 1;
 
@@ -35,6 +36,37 @@ function getIntrinsicSize(svgRoot) {
   return { width: 100, height: 100 };
 }
 
+// Builds a plain, namespaced <svg x y width height viewBox> wrapper around
+// the original SVG's content, with none of the editor-only extras (hit
+// rect, selection class, data-shape-id). Shared by _addShape (which then
+// layers those extras on top) and by export (which wants exactly this,
+// nothing more).
+export function buildCleanWrapper(sourceSvgText, x, y) {
+  const parsed = new DOMParser().parseFromString(sourceSvgText, 'image/svg+xml');
+  const svgRoot = parsed.documentElement;
+
+  if (svgRoot.nodeName.toLowerCase() !== 'svg' || parsed.querySelector('parsererror')) {
+    throw new Error("Doesn't look like a valid SVG file.");
+  }
+
+  const { width, height } = getIntrinsicSize(svgRoot);
+  const viewBox = svgRoot.getAttribute('viewBox') || `0 0 ${width} ${height}`;
+
+  const wrapper = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+  wrapper.setAttribute('x', String(x));
+  wrapper.setAttribute('y', String(y));
+  wrapper.setAttribute('width', String(width));
+  wrapper.setAttribute('height', String(height));
+  wrapper.setAttribute('viewBox', viewBox);
+  wrapper.setAttribute('overflow', 'visible');
+
+  while (svgRoot.firstChild) {
+    wrapper.appendChild(svgRoot.firstChild);
+  }
+
+  return { wrapper, width, height, viewBox };
+}
+
 export class ShapeDocument {
   constructor(worldEl) {
     this.world = worldEl;
@@ -47,14 +79,13 @@ export class ShapeDocument {
 
   async addFromFile(file, camera) {
     const text = await file.text();
-    const parsed = new DOMParser().parseFromString(text, 'image/svg+xml');
-    const svgRoot = parsed.documentElement;
-
-    if (svgRoot.nodeName.toLowerCase() !== 'svg' || parsed.querySelector('parsererror')) {
+    let width, height;
+    try {
+      ({ width, height } = buildCleanWrapper(text, 0, 0));
+    } catch {
       throw new Error(`"${file.name}" doesn't look like a valid SVG file.`);
     }
 
-    const { width, height } = getIntrinsicSize(svgRoot);
     const center = camera.getViewportCenterWorld();
     const x = center.x - width / 2;
     const y = center.y - height / 2;
@@ -62,9 +93,10 @@ export class ShapeDocument {
     return this._addShape({ id: nextId++, name: file.name, sourceSvgText: text, x, y });
   }
 
-  // Recreates a shape from previously-saved data (autosave restore). Unlike
-  // addFromFile, the id/position are given rather than computed, since
-  // we're putting things back exactly where they were.
+  // Recreates a shape from previously-saved data (autosave restore, or
+  // opening an exported project). Unlike addFromFile, the id/position are
+  // given rather than computed, since we're putting things back exactly
+  // where they were.
   restoreShape(saved) {
     const shape = this._addShape({
       id: saved.id,
@@ -80,20 +112,9 @@ export class ShapeDocument {
   }
 
   _addShape({ id, name, sourceSvgText, x, y }) {
-    const parsed = new DOMParser().parseFromString(sourceSvgText, 'image/svg+xml');
-    const svgRoot = parsed.documentElement;
-    const { width, height } = getIntrinsicSize(svgRoot);
-
-    const viewBox = svgRoot.getAttribute('viewBox') || `0 0 ${width} ${height}`;
+    const { wrapper, width, height, viewBox } = buildCleanWrapper(sourceSvgText, x, y);
     const viewBoxParts = viewBox.trim().split(/[\s,]+/).map(Number);
 
-    const wrapper = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
-    wrapper.setAttribute('x', String(x));
-    wrapper.setAttribute('y', String(y));
-    wrapper.setAttribute('width', String(width));
-    wrapper.setAttribute('height', String(height));
-    wrapper.setAttribute('viewBox', viewBox);
-    wrapper.setAttribute('overflow', 'visible');
     wrapper.setAttribute('data-shape-id', String(id));
     wrapper.classList.add('shape-wrapper');
 
@@ -115,13 +136,6 @@ export class ShapeDocument {
     hitRect.setAttribute('vector-effect', 'non-scaling-stroke');
     hitRect.classList.add('hit-rect');
     wrapper.appendChild(hitRect);
-
-    // Move the original SVG's children into the wrapper, preserving the
-    // original markup (defs, styles, nested groups, etc.) rather than
-    // re-serializing/re-parsing it.
-    while (svgRoot.firstChild) {
-      wrapper.appendChild(svgRoot.firstChild);
-    }
 
     this.world.appendChild(wrapper);
 

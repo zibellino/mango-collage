@@ -15,8 +15,9 @@ const APP_SHELL = [
   './js/shapes.js',
   './js/interaction.js',
   './js/snapping.js',
-  './js/units.js',
   './js/persistence.js',
+  './js/export.js',
+  './js/vendor/fflate.js',
   './icons/icon.png',
 ];
 

@@ -3,6 +3,7 @@ import { initMenu } from './menu.js';
 import { ShapeDocument } from './shapes.js';
 import { initInteraction } from './interaction.js';
 import { Autosave } from './persistence.js';
+import { exportCombinedSvg, exportZip, openFile } from './export.js';
 
 const svg = document.getElementById('canvas');
 const camera = new GridCamera(svg);
@@ -42,6 +43,16 @@ initMenu({
       alert(err.message || 'Could not add that SVG file.');
     }
   },
+  onOpen: async (file) => {
+    try {
+      await openFile(file, { doc, camera, interaction, autosave });
+    } catch (err) {
+      console.error(err);
+      alert(err.message || 'Could not open that file.');
+    }
+  },
+  onExportSvg: () => exportCombinedSvg(doc),
+  onExportZip: () => exportZip(doc, camera),
 });
 
 if ('serviceWorker' in navigator) {
