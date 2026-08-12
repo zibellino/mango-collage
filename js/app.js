@@ -4,11 +4,41 @@ import { ShapeDocument } from './shapes.js';
 import { initInteraction } from './interaction.js';
 import { Autosave } from './persistence.js';
 import { exportCombinedSvg, exportZip, openFile } from './export.js';
+import { showShapeContextMenu } from './context-menu.js';
 
 const svg = document.getElementById('canvas');
 const camera = new GridCamera(svg);
 const doc = new ShapeDocument(svg.querySelector('#world'));
-const interaction = initInteraction(svg, camera, doc);
+const replaceInput = document.getElementById('replace-input');
+
+const interaction = initInteraction(svg, camera, doc, {
+  onLongPress: (shape, clientX, clientY) => {
+    showShapeContextMenu(clientX, clientY, {
+      onRemove: () => {
+        doc.removeShape(shape.id);
+        interaction.clearSelection();
+      },
+      onReplace: () => {
+        replaceInput.dataset.targetId = String(shape.id);
+        replaceInput.value = '';
+        replaceInput.click();
+      },
+    });
+  },
+});
+
+replaceInput.addEventListener('change', async () => {
+  const file = replaceInput.files && replaceInput.files[0];
+  const targetId = Number(replaceInput.dataset.targetId);
+  if (!file || !targetId) return;
+  try {
+    await doc.replaceShapeFromFile(targetId, file);
+  } catch (err) {
+    console.error(err);
+    alert(err.message || 'Could not replace that shape.');
+  }
+  interaction.clearSelection();
+});
 
 const autosave = new Autosave(doc, camera);
 doc.onChange = () => autosave.scheduleSave();

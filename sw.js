@@ -17,6 +17,7 @@ const APP_SHELL = [
   './js/snapping.js',
   './js/persistence.js',
   './js/export.js',
+  './js/context-menu.js',
   './js/vendor/fflate.js',
   './icons/icon.png',
 ];

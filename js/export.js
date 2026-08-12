@@ -1,4 +1,4 @@
-import { buildCleanWrapper } from './shapes.js';
+import { buildCleanWrapper, parseMultiShapeSvg } from './shapes.js';
 import { zipSync, unzipSync, strToU8, strFromU8 } from './vendor/fflate.js';
 
 function computeBoundingBox(shapes) {
@@ -48,6 +48,12 @@ export function exportCombinedSvg(doc) {
 
   for (const shape of doc.shapes) {
     const { wrapper } = buildCleanWrapper(shape.sourceSvgText, shape.x - bbox.minX, shape.y - bbox.minY);
+    // Marks this wrapper as one of ours (as opposed to an arbitrary nested
+    // <svg> some other tool produced), and preserves the original name —
+    // both read back by parseMultiShapeSvg() so opening this same file
+    // later reconstructs separate, individually-editable shapes instead of
+    // one flattened blob.
+    wrapper.setAttribute('data-name', shape.name);
     root.appendChild(wrapper);
   }
 
@@ -126,23 +132,36 @@ export async function openFile(file, { doc, camera, interaction, autosave }) {
 
   if (isSvg) {
     const text = await file.text();
-    let width, height;
-    try {
-      ({ width, height } = buildCleanWrapper(text, 0, 0));
-    } catch {
-      alert(`"${file.name}" doesn't look like a valid SVG file.`);
-      return;
+    const multi = parseMultiShapeSvg(text);
+
+    if (multi) {
+      doc.clear();
+      interaction.clearSelection();
+      // A previously exported multi-shape SVG carries each shape's
+      // absolute position already — placed exactly as saved, same as a
+      // ZIP restore, not recentered like a fresh single-shape Add.
+      multi.forEach((m, i) => {
+        doc.restoreShape({ id: i + 1, name: m.name, sourceSvgText: m.sourceSvgText, x: m.x, y: m.y });
+      });
+    } else {
+      let width, height;
+      try {
+        ({ width, height } = buildCleanWrapper(text, 0, 0));
+      } catch {
+        alert(`"${file.name}" doesn't look like a valid SVG file.`);
+        return;
+      }
+      doc.clear();
+      interaction.clearSelection();
+      const center = camera.getViewportCenterWorld();
+      doc.restoreShape({
+        id: 1,
+        name: file.name,
+        sourceSvgText: text,
+        x: center.x - width / 2,
+        y: center.y - height / 2,
+      });
     }
-    doc.clear();
-    interaction.clearSelection();
-    const center = camera.getViewportCenterWorld();
-    doc.restoreShape({
-      id: 1,
-      name: file.name,
-      sourceSvgText: text,
-      x: center.x - width / 2,
-      y: center.y - height / 2,
-    });
   } else {
     const bytes = new Uint8Array(await file.arrayBuffer());
     let entries;

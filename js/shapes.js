@@ -67,6 +67,35 @@ export function buildCleanWrapper(sourceSvgText, x, y) {
   return { wrapper, width, height, viewBox };
 }
 
+// Detects whether `text` is a combined multi-shape SVG previously produced
+// by exportCombinedSvg (a root <svg> containing child <svg data-name ...>
+// wrappers) and, if so, returns each child as a standalone shape spec so
+// the caller can re-import them as separate shapes rather than one flat
+// blob. Returns null if the file doesn't match that pattern (an ordinary,
+// non-Mango-Collage SVG), so callers fall back to treating it as one shape
+// — this avoids misinterpreting an arbitrary third-party SVG that happens
+// to contain nested <svg> elements for unrelated reasons.
+export function parseMultiShapeSvg(text) {
+  const parsed = new DOMParser().parseFromString(text, 'image/svg+xml');
+  const root = parsed.documentElement;
+  if (root.nodeName.toLowerCase() !== 'svg' || parsed.querySelector('parsererror')) {
+    return null;
+  }
+
+  const children = Array.from(root.children).filter(
+    (el) => el.nodeName.toLowerCase() === 'svg' && el.hasAttribute('data-name')
+  );
+  if (children.length === 0) return null;
+
+  const serializer = new XMLSerializer();
+  return children.map((el) => ({
+    name: el.getAttribute('data-name'),
+    x: parseFloat(el.getAttribute('x')) || 0,
+    y: parseFloat(el.getAttribute('y')) || 0,
+    sourceSvgText: serializer.serializeToString(el),
+  }));
+}
+
 export class ShapeDocument {
   constructor(worldEl) {
     this.world = worldEl;
@@ -77,8 +106,39 @@ export class ShapeDocument {
     this.onChange = () => {};
   }
 
+  // Returns a single new shape normally. If the file is a previously
+  // exported multi-shape SVG (see parseMultiShapeSvg), returns an array of
+  // shapes instead, offset as a group so their combined layout lands
+  // centered on the current viewport (their relative positions to each
+  // other are preserved).
   async addFromFile(file, camera) {
     const text = await file.text();
+    const multi = parseMultiShapeSvg(text);
+
+    if (multi) {
+      const built = multi.map((m) => ({ ...m, ...buildCleanWrapper(m.sourceSvgText, 0, 0) }));
+      let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+      for (const b of built) {
+        minX = Math.min(minX, b.x);
+        minY = Math.min(minY, b.y);
+        maxX = Math.max(maxX, b.x + b.width);
+        maxY = Math.max(maxY, b.y + b.height);
+      }
+      const center = camera.getViewportCenterWorld();
+      const offsetX = center.x - (maxX - minX) / 2 - minX;
+      const offsetY = center.y - (maxY - minY) / 2 - minY;
+
+      return built.map((b) =>
+        this._addShape({
+          id: nextId++,
+          name: b.name,
+          sourceSvgText: b.sourceSvgText,
+          x: b.x + offsetX,
+          y: b.y + offsetY,
+        })
+      );
+    }
+
     let width, height;
     try {
       ({ width, height } = buildCleanWrapper(text, 0, 0));
@@ -111,7 +171,12 @@ export class ShapeDocument {
     return shape;
   }
 
-  _addShape({ id, name, sourceSvgText, x, y }) {
+  // Builds the full editor-ready wrapper (source content + hit-rect +
+  // selection/id bookkeeping attributes) but doesn't attach it to the DOM
+  // or the shapes array — shared by _addShape (which does both) and
+  // replaceShapeFromFile (which swaps it into an existing shape's slot
+  // instead).
+  _buildEditorWrapper(id, sourceSvgText, x, y) {
     const { wrapper, width, height, viewBox } = buildCleanWrapper(sourceSvgText, x, y);
     const viewBoxParts = viewBox.trim().split(/[\s,]+/).map(Number);
 
@@ -137,6 +202,11 @@ export class ShapeDocument {
     hitRect.classList.add('hit-rect');
     wrapper.appendChild(hitRect);
 
+    return { wrapper, width, height };
+  }
+
+  _addShape({ id, name, sourceSvgText, x, y }) {
+    const { wrapper, width, height } = this._buildEditorWrapper(id, sourceSvgText, x, y);
     this.world.appendChild(wrapper);
 
     const shape = { id, name, x, y, width, height, sourceSvgText, element: wrapper };
@@ -159,6 +229,50 @@ export class ShapeDocument {
     shape.element.setAttribute('x', String(x));
     shape.element.setAttribute('y', String(y));
     this.onChange();
+  }
+
+  // Removes a single shape from both the DOM and the model. Used by the
+  // long-press "Remove" action.
+  removeShape(id) {
+    const index = this.shapes.findIndex((s) => s.id === id);
+    if (index === -1) return;
+    this.shapes[index].element.remove();
+    this.shapes.splice(index, 1);
+    this.onChange();
+  }
+
+  // Swaps a shape's content for a new file's, in place — same id and
+  // position, and the new element takes the old one's exact spot in the
+  // DOM (world.replaceChild), so stacking order is preserved rather than
+  // jumping to the front like a fresh Add would. Used by the long-press
+  // "Replace" action.
+  async replaceShapeFromFile(id, file) {
+    const index = this.shapes.findIndex((s) => s.id === id);
+    if (index === -1) throw new Error('That shape no longer exists.');
+    const existing = this.shapes[index];
+
+    const text = await file.text();
+    let built;
+    try {
+      built = this._buildEditorWrapper(id, text, existing.x, existing.y);
+    } catch {
+      throw new Error(`"${file.name}" doesn't look like a valid SVG file.`);
+    }
+
+    this.world.replaceChild(built.wrapper, existing.element);
+    const shape = {
+      id,
+      name: file.name,
+      x: existing.x,
+      y: existing.y,
+      width: built.width,
+      height: built.height,
+      sourceSvgText: text,
+      element: built.wrapper,
+    };
+    this.shapes[index] = shape;
+    this.onChange();
+    return shape;
   }
 
   // Plain-data snapshot suitable for persistence/export (no DOM elements).

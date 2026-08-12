@@ -14,13 +14,18 @@ import { snapPoint } from './snapping.js';
 // - A single-finger press+release with no real movement (a tap) selects
 //   the shape under it, or toggles it off if it was already selected, or
 //   deselects if it landed on empty canvas.
+// - A single-finger press held in place (no movement past the threshold)
+//   on a shape for LONG_PRESS_MS: selects that shape and fires onLongPress
+//   (used to show the Remove/Replace popup). This consumes the gesture —
+//   the eventual release does NOT also toggle selection like a tap would.
 // - Two-finger gesture: always pans/zooms the camera, regardless of what's
 //   underneath — this guarantees you can always get the camera moving even
 //   if a shape currently covers the whole viewport.
 
 const TAP_THRESHOLD_PX = 6;
+const LONG_PRESS_MS = 500;
 
-export function initInteraction(svgEl, camera, doc) {
+export function initInteraction(svgEl, camera, doc, { onLongPress } = {}) {
   const pointers = new Map(); // pointerId -> {x, y}
   let single = null; // gesture state while exactly one pointer is down
   let pinch = null; // gesture state while two+ pointers are down
@@ -44,23 +49,43 @@ export function initInteraction(svgEl, camera, doc) {
     }
   }
 
+  function clearLongPressTimer(gesture) {
+    if (gesture && gesture.longPressTimer != null) {
+      clearTimeout(gesture.longPressTimer);
+      gesture.longPressTimer = null;
+    }
+  }
+
   function startSingle(pointerId, clientX, clientY) {
     const shapeId = shapeIdFromTarget(document.elementFromPoint(clientX, clientY) || svgEl);
     const shape = shapeId != null ? doc.getById(shapeId) : null;
-    single = {
+    const gesture = {
       pointerId,
       startClientX: clientX,
       startClientY: clientY,
       lastClientX: clientX,
       lastClientY: clientY,
-      committed: null, // becomes 'pan' or 'drag' once movement passes the threshold
+      committed: null, // becomes 'pan', 'drag', or 'longpress' once decided
       shapeId,
       shapeStartX: shape ? shape.x : 0,
       shapeStartY: shape ? shape.y : 0,
       // Only a drag that starts on the already-selected shape moves it;
       // starting on any other shape (or empty canvas) always pans.
       canDrag: shapeId != null && shapeId === selectedId,
+      longPressTimer: null,
     };
+
+    if (shapeId != null && onLongPress) {
+      gesture.longPressTimer = setTimeout(() => {
+        if (single !== gesture || gesture.committed) return;
+        gesture.committed = 'longpress';
+        setSelected(shapeId);
+        const s = doc.getById(shapeId);
+        if (s) onLongPress(s, clientX, clientY);
+      }, LONG_PRESS_MS);
+    }
+
+    single = gesture;
   }
 
   svgEl.addEventListener('pointerdown', (e) => {
@@ -72,9 +97,10 @@ export function initInteraction(svgEl, camera, doc) {
       startSingle(e.pointerId, e.clientX, e.clientY);
     } else if (pointers.size === 2) {
       // A second finger always hands control to the camera. If a shape
-      // drag was mid-gesture with the first finger, it simply stops where
-      // it is — no special cleanup needed since position updates were
-      // already applied live.
+      // drag (or a pending long-press) was mid-gesture with the first
+      // finger, it simply stops where it is — no special cleanup needed
+      // since position updates were already applied live.
+      clearLongPressTimer(single);
       single = null;
       const pts = Array.from(pointers.values());
       pinch = {
@@ -104,6 +130,7 @@ export function initInteraction(svgEl, camera, doc) {
     }
 
     if (!single || e.pointerId !== single.pointerId) return;
+    if (single.committed === 'longpress') return;
 
     const totalDx = e.clientX - single.startClientX;
     const totalDy = e.clientY - single.startClientY;
@@ -114,6 +141,8 @@ export function initInteraction(svgEl, camera, doc) {
         single.lastClientY = e.clientY;
         return;
       }
+      // Real movement happened — this is a drag/pan, not a long press.
+      clearLongPressTimer(single);
       single.committed = single.canDrag ? 'drag' : 'pan';
       if (single.committed === 'pan') setSelected(null);
     }
@@ -137,6 +166,7 @@ export function initInteraction(svgEl, camera, doc) {
     pointers.delete(e.pointerId);
 
     if (single && e.pointerId === single.pointerId) {
+      clearLongPressTimer(single);
       if (!single.committed) {
         // No real movement happened: this was a tap.
         if (single.shapeId != null) {
@@ -145,6 +175,8 @@ export function initInteraction(svgEl, camera, doc) {
           setSelected(null);
         }
       }
+      // If committed === 'longpress', the popup is already showing — the
+      // release itself does nothing further.
       single = null;
     }
 
@@ -153,7 +185,8 @@ export function initInteraction(svgEl, camera, doc) {
       // One finger remains after a multi-touch gesture ends: start a fresh
       // single-pointer gesture from here (pan-only — we deliberately don't
       // try to recover which shape it might be over, so lifting a finger
-      // out of a pinch never accidentally starts dragging a shape).
+      // out of a pinch never accidentally starts dragging a shape, and
+      // never accidentally arms a long-press either).
       const [[pointerId, p]] = pointers.entries();
       single = {
         pointerId,
@@ -164,11 +197,17 @@ export function initInteraction(svgEl, camera, doc) {
         committed: null,
         shapeId: null,
         canDrag: false,
+        longPressTimer: null,
       };
     }
   }
   svgEl.addEventListener('pointerup', release);
   svgEl.addEventListener('pointercancel', release);
+
+  // Long-press is our own gesture, not the browser's — suppress the native
+  // context menu (e.g. Android's "open image"/text-selection popup) so it
+  // doesn't fight with ours.
+  svgEl.addEventListener('contextmenu', (e) => e.preventDefault());
 
   // Exposed so app.js can clear the selection after an external change to
   // the document (e.g. "New" wiping everything) — selectedId would

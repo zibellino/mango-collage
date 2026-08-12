@@ -67,23 +67,21 @@ html, body {
   background: #f2f2f2;
 }
 
-#menu-dropdown {
-  position: absolute;
-  top: 46px;
-  left: 0;
+.popup-menu {
   min-width: 140px;
   background: #ffffff;
   border-radius: 8px;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.25);
   overflow: hidden;
   padding: 4px;
+  z-index: 20;
 }
 
-#menu-dropdown[hidden] {
+.popup-menu[hidden] {
   display: none;
 }
 
-#menu-dropdown button {
+.popup-menu button {
   display: block;
   width: 100%;
   text-align: left;
@@ -95,6 +93,16 @@ html, body {
   cursor: pointer;
 }
 
-#menu-dropdown button:hover {
+.popup-menu button:hover {
   background: #f2f2f2;
+}
+
+#menu-dropdown {
+  position: absolute;
+  top: 46px;
+  left: 0;
+}
+
+#shape-context-menu {
+  position: fixed;
 }
