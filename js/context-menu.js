@@ -24,7 +24,7 @@ export function hideShapeContextMenu() {
   if (menuEl) menuEl.hidden = true;
 }
 
-export function showShapeContextMenu(clientX, clientY, { onRemove, onReplace }) {
+export function showShapeContextMenu(clientX, clientY, { onRemove, onReplace, onDuplicate }) {
   const menuEl = document.getElementById('shape-context-menu');
   ensureBound(menuEl);
 
@@ -46,8 +46,17 @@ export function showShapeContextMenu(clientX, clientY, { onRemove, onReplace }) 
     onReplace();
   });
 
+  const duplicateBtn = document.createElement('button');
+  duplicateBtn.textContent = 'Duplicate';
+  duplicateBtn.setAttribute('role', 'menuitem');
+  duplicateBtn.addEventListener('click', () => {
+    hideShapeContextMenu();
+    onDuplicate();
+  });
+
   menuEl.appendChild(removeBtn);
   menuEl.appendChild(replaceBtn);
+  menuEl.appendChild(duplicateBtn);
   menuEl.hidden = false;
 
   // Measure after unhiding (offsetWidth/Height are 0 while hidden), then

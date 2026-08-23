@@ -231,6 +231,34 @@ export class ShapeDocument {
     this.onChange();
   }
 
+  // Adds a new copy of an existing shape, centered in the current
+  // viewport — same placement rule as addFromFile, just sourced from the
+  // shape's already-known sourceSvgText instead of a freshly-read file.
+  // Used by the long-press "Duplicate" action.
+  duplicateShape(id, camera) {
+    const existing = this.getById(id);
+    if (!existing) throw new Error('That shape no longer exists.');
+
+    let width, height;
+    try {
+      ({ width, height } = buildCleanWrapper(existing.sourceSvgText, 0, 0));
+    } catch {
+      throw new Error('Could not duplicate that shape.');
+    }
+
+    const center = camera.getViewportCenterWorld();
+    const x = center.x - width / 2;
+    const y = center.y - height / 2;
+
+    return this._addShape({
+      id: nextId++,
+      name: existing.name,
+      sourceSvgText: existing.sourceSvgText,
+      x,
+      y,
+    });
+  }
+
   // Removes a single shape from both the DOM and the model. Used by the
   // long-press "Remove" action.
   removeShape(id) {

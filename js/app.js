@@ -23,6 +23,15 @@ const interaction = initInteraction(svg, camera, doc, {
         replaceInput.value = '';
         replaceInput.click();
       },
+      onDuplicate: () => {
+        try {
+          doc.duplicateShape(shape.id, camera);
+        } catch (err) {
+          console.error(err);
+          alert(err.message || 'Could not duplicate that shape.');
+        }
+        interaction.clearSelection();
+      },
     });
   },
 });
