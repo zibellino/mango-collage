@@ -1,11 +1,11 @@
-export function initMenu({ onAdd, onNew, onOpen, onExportSvg, onExportZip }) {
+export function initMenu({ onAdd, onNew, onOpen, onExportNested, onExportFlattened }) {
   const button = document.getElementById('menu-button');
   const dropdown = document.getElementById('menu-dropdown');
   const newItem = document.getElementById('menu-new');
   const openItem = document.getElementById('menu-open');
   const addItem = document.getElementById('menu-add');
-  const exportSvgItem = document.getElementById('menu-export-svg');
-  const exportZipItem = document.getElementById('menu-export-zip');
+  const exportNestedItem = document.getElementById('menu-export-nested');
+  const exportFlattenedItem = document.getElementById('menu-export-flattened');
   const fileInput = document.getElementById('file-input');
   const openInput = document.getElementById('open-input');
 
@@ -60,13 +60,13 @@ export function initMenu({ onAdd, onNew, onOpen, onExportSvg, onExportZip }) {
     if (file && onAdd) onAdd(file);
   });
 
-  exportSvgItem.addEventListener('click', () => {
+  exportNestedItem.addEventListener('click', () => {
     closeMenu();
-    if (onExportSvg) onExportSvg();
+    if (onExportNested) onExportNested();
   });
 
-  exportZipItem.addEventListener('click', () => {
+  exportFlattenedItem.addEventListener('click', () => {
     closeMenu();
-    if (onExportZip) onExportZip();
+    if (onExportFlattened) onExportFlattened();
   });
 }

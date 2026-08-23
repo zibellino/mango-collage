@@ -3,7 +3,7 @@ import { initMenu } from './menu.js';
 import { ShapeDocument } from './shapes.js';
 import { initInteraction } from './interaction.js';
 import { Autosave } from './persistence.js';
-import { exportCombinedSvg, exportZip, openFile } from './export.js';
+import { exportCombinedSvg, exportFlattenedSvg, openFile } from './export.js';
 import { showShapeContextMenu } from './context-menu.js';
 
 const svg = document.getElementById('canvas');
@@ -90,8 +90,8 @@ initMenu({
       alert(err.message || 'Could not open that file.');
     }
   },
-  onExportSvg: () => exportCombinedSvg(doc),
-  onExportZip: () => exportZip(doc, camera),
+  onExportNested: () => exportCombinedSvg(doc),
+  onExportFlattened: () => exportFlattenedSvg(doc),
 });
 
 if ('serviceWorker' in navigator) {

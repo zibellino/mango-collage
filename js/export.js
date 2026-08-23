@@ -1,5 +1,5 @@
 import { buildCleanWrapper, parseMultiShapeSvg } from './shapes.js';
-import { zipSync, unzipSync, strToU8, strFromU8 } from './vendor/fflate.js';
+import { unzipSync, strFromU8 } from './vendor/fflate.js';
 
 function computeBoundingBox(shapes) {
   if (shapes.length === 0) return null;
@@ -62,56 +62,58 @@ export function exportCombinedSvg(doc) {
   triggerDownload(blob, `mango-collage-${Date.now()}.svg`);
 }
 
-function sanitizeFilename(name) {
-  const base = name.replace(/\.svg$/i, '').replace(/[^a-zA-Z0-9_-]+/g, '_') || 'shape';
-  return base;
-}
-
-// Zip archive containing the original individual SVG files (untouched, so
-// they're independently usable/inspectable outside the app too) plus a
-// manifest.json with each shape's position/size and the current camera
-// view, sufficient to fully restore the session via openZip().
-export function exportZip(doc, camera) {
+// Like exportCombinedSvg, but flattened: each shape's content is moved
+// directly under the root <svg> (wrapped only in a plain <g> transform),
+// rather than staying nested inside its own <svg x y width height
+// viewBox> element. The translate/scale/translate transform reproduces
+// exactly what that nested <svg>'s x/y/width/height/viewBox would have
+// done to its content, so the visual result is identical — just without
+// any nested <svg> shapes in the output. Because the per-shape wrapper is
+// gone, this is a one-way export: unlike exportCombinedSvg's output, a
+// flattened file can't be read back by parseMultiShapeSvg into separate,
+// individually-editable shapes.
+export function exportFlattenedSvg(doc) {
   if (doc.shapes.length === 0) {
     alert('Nothing to export yet — add a shape first.');
     return;
   }
 
-  const usedNames = new Set();
-  const files = {};
-  const manifestShapes = [];
+  const bbox = computeBoundingBox(doc.shapes);
+  const svgNs = 'http://www.w3.org/2000/svg';
+  const root = document.createElementNS(svgNs, 'svg');
+  root.setAttribute('xmlns', svgNs);
+  root.setAttribute('viewBox', `0 0 ${bbox.width} ${bbox.height}`);
+  root.setAttribute('width', `${bbox.width}mm`);
+  root.setAttribute('height', `${bbox.height}mm`);
 
   for (const shape of doc.shapes) {
-    let filename = `${sanitizeFilename(shape.name)}.svg`;
-    let n = 2;
-    while (usedNames.has(filename)) {
-      filename = `${sanitizeFilename(shape.name)}-${n}.svg`;
-      n++;
-    }
-    usedNames.add(filename);
+    const { wrapper, width, height, viewBox } = buildCleanWrapper(shape.sourceSvgText, 0, 0);
+    const [vx, vy, vw, vh] = viewBox.trim().split(/[\s,]+/).map(Number);
 
-    files[`shapes/${filename}`] = strToU8(shape.sourceSvgText);
-    manifestShapes.push({
-      id: shape.id,
-      name: shape.name,
-      file: `shapes/${filename}`,
-      x: shape.x,
-      y: shape.y,
-      width: shape.width,
-      height: shape.height,
-    });
+    // Root-space placement, same as the nested wrapper's x/y would give.
+    const tx = shape.x - bbox.minX;
+    const ty = shape.y - bbox.minY;
+    // viewBox -> width/height scale, same as the nested wrapper applied
+    // implicitly via its own viewBox attribute.
+    const sx = vw ? width / vw : 1;
+    const sy = vh ? height / vh : 1;
+
+    const g = document.createElementNS(svgNs, 'g');
+    g.setAttribute('data-name', shape.name);
+    g.setAttribute(
+      'transform',
+      `translate(${tx}, ${ty}) scale(${sx}, ${sy}) translate(${-vx || 0}, ${-vy || 0})`
+    );
+
+    while (wrapper.firstChild) {
+      g.appendChild(wrapper.firstChild);
+    }
+    root.appendChild(g);
   }
 
-  const manifest = {
-    version: 1,
-    camera: { ...camera.camera },
-    shapes: manifestShapes,
-  };
-  files['manifest.json'] = strToU8(JSON.stringify(manifest, null, 2));
-
-  const zipped = zipSync(files, { level: 6 });
-  const blob = new Blob([zipped], { type: 'application/zip' });
-  triggerDownload(blob, `mango-collage-${Date.now()}.zip`);
+  const xml = '<?xml version="1.0" encoding="UTF-8"?>\n' + new XMLSerializer().serializeToString(root);
+  const blob = new Blob([xml], { type: 'image/svg+xml' });
+  triggerDownload(blob, `mango-collage-flat-${Date.now()}.svg`);
 }
 
 // "Open" always replaces the current canvas (unlike "Add", which inserts
