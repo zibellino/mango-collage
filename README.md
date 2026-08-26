@@ -19,6 +19,7 @@ and grid, but the service worker (offline caching) won't register on a
 `file://` origin.
 
 ## Deployment
+https://zibellino.github.io/mango-collage/
 
 Static site, deployed via GitHub Pages directly from this repo (no build
 step). Enable Pages in the repo settings, pointing at the branch/folder this
