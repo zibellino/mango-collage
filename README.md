@@ -31,11 +31,6 @@ file lives in.
 - `css/style.css` — styling
 - `js/app.js` — entry point, wires everything together
 - `js/grid.js` — SVG canvas camera: pan, pinch-zoom, and the background grid
-- `js/menu.js` — hamburger menu (currently: one "Add" item, opens a file
-  picker for SVG files)
+- `js/menu.js` — hamburger menu
 - `manifest.json`, `sw.js`, `icons/` — PWA install/offline support
 
-## Status
-
-Canvas pan/zoom and the grid are in place. The "Add" menu item opens a file
-picker for SVG files but doesn't place them on the canvas yet — that's next.
